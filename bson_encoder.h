@@ -114,7 +114,7 @@ public:
         }
     }
     void ObjectEnd(const char *key) {
-        if (NULL != key) {
+        if (NULL != key) { // in case of inherit, object key is NULL
             bson_append_document_end(&cur->parent->data, &cur->data);
             cur = cur->parent; // do not pop and delete
         }
@@ -123,11 +123,20 @@ public:
     /*BsonEncoder& convert(const char*key, const BsonEncoder& data){
         bson_append_document(_bson, key, strlen(key), data._bson);
         return *this;
-    }
-    BsonEncoder& convert(const char*key, const char* data) {
-        std::string d(data);
-        return convert(key, d);
     }*/
+
+    bool encode(const char*key, const char* val, const Extend *ext) {
+        if (NULL==val && Extend::OmitEmpty(ext)){
+            return false;
+        }
+        if (NULL != val) {
+            bson_append_utf8(&cur->data, key, strlen(key), val, strlen(val));
+        } else {
+            bson_append_utf8(&cur->data, key, strlen(key), "", 0);
+        }
+
+        return true;
+    }
 
     bool encode(const char*key, const std::string& val, const Extend *ext) {
         if (val.empty() && Extend::OmitEmpty(ext)){

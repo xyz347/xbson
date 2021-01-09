@@ -14,6 +14,7 @@
 * limitations under the License.
 */
 
+#include <algorithm>
 #include <iostream>
 
 #include<gtest/gtest.h>
@@ -250,6 +251,12 @@ TEST(bson, testBson) {
     XTest cd2;
     xpack::json::decode(js, cd2);
     childeq(cd2);
+
+    XTest cd3;
+    std::replace( js.begin(), js.end(), '"', '\'');
+    xpack::BsonBuilder bb(js);
+    xpack::bson::decode(bb.Encode(), cd3);
+    childeq(cd3);
 }
 
 int main(int argc, char *argv[]) {

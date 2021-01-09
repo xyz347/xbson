@@ -19,6 +19,7 @@
 
 #include "bson_decoder.h"
 #include "bson_encoder.h"
+#include "bson_builder.h"
 #include "xpack/xpack.h"
 
 namespace xpack {
