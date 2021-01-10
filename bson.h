@@ -34,6 +34,13 @@ public:
     }
 
     template <class T>
+    // if copy is false, decode will parse bson in data. data's life time must >= call of decode
+    static void decode(const uint8_t* data, size_t len, T &val, bool copy=false) {
+        BsonDecoder doc(data, len, copy);
+        doc.decode(NULL, val, NULL);
+    }
+
+    template <class T>
     static std::string encode(const T &val) {
         BsonEncoder doc;
         doc.encode(NULL, val, NULL);

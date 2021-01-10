@@ -184,6 +184,11 @@ public:
 
         return bd.en->en.Json();
     }
+    template <typename... Args>
+    static std::string En(const std::string&fmt, Args... args) {
+        BsonBuilder bb(fmt);
+        return bb.Encode(args...);
+    }
 #endif
 
 private: // encoder
