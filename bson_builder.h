@@ -129,14 +129,14 @@ public:
         if (parse()) {
             for (size_t i=0; i<items.size(); ++i) {
                 if (items[i]->kvar || items[i]->tk.type==Variable) {
-                    //return;
+                    return;
                 }
-                const Item *it = items[i];
+                //const Item *it = items[i];
                 //std::cout<<"type:"<<it->tk.type<<"("<<it->kvar<<")"<<std::endl;//' '<<"key:"<<items[i]->key<<std::endl;
             }
 
             // no variable. pre build it
-            //bstr = Encode();
+            bstr = Encode();
         }
     }
 

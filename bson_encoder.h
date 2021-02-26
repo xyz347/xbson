@@ -89,7 +89,8 @@ public:
     }
 
 public:
-    void ArrayBegin(const char *key) {
+    void ArrayBegin(const char *key, const Extend *ext) {
+        (void)ext;
         if (key != NULL) {
             Node *tmp = new Node(key, cur);
             nodes.push_back(tmp);
@@ -98,13 +99,15 @@ public:
             cur = tmp;
         }
     }
-    void ArrayEnd(const char *key) {
+    void ArrayEnd(const char *key, const Extend *ext) {
+        (void)ext;
         if (NULL != key) {
             bson_append_array_end(&cur->parent->data, &cur->data);
             cur = cur->parent; // do not pop and delete
         }
     }
-    void ObjectBegin(const char *key) {
+    void ObjectBegin(const char *key, const Extend *ext) {
+        (void)ext;
         if (key != NULL) {
             Node *tmp = new Node(key, cur);
             nodes.push_back(tmp);
@@ -113,7 +116,8 @@ public:
             cur = tmp;
         }
     }
-    void ObjectEnd(const char *key) {
+    void ObjectEnd(const char *key, const Extend *ext) {
+        (void)ext;
         if (NULL != key) { // in case of inherit, object key is NULL
             bson_append_document_end(&cur->parent->data, &cur->data);
             cur = cur->parent; // do not pop and delete
@@ -148,6 +152,7 @@ public:
     }
 
     bool encode(const char*key, const bool &val, const Extend *ext) {
+        (void)ext;
         bson_append_bool(&cur->data, key, strlen(key), val);
         return true;
     }

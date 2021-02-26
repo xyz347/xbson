@@ -122,12 +122,12 @@ void childeq(const XTest&cd) {
     EXPECT_EQ(cd.as1, "hello");
     EXPECT_EQ(cd.as2, "world");
 
-    EXPECT_EQ(cd.vi.size(), 3);
+    EXPECT_EQ(cd.vi.size(), 3U);
     EXPECT_EQ(cd.vi[0], 1);
     EXPECT_EQ(cd.vi[1], 2);
     EXPECT_EQ(cd.vi[2], 4);
 
-    EXPECT_EQ(cd.vvi.size(), 2);
+    EXPECT_EQ(cd.vvi.size(), 2U);
     EXPECT_EQ(cd.vvi[0][0], 8);
     EXPECT_EQ(cd.vvi[0][1], 16);
     EXPECT_EQ(cd.vvi[0][2], 32);
@@ -135,12 +135,12 @@ void childeq(const XTest&cd) {
     EXPECT_EQ(cd.vvi[1][1], 128);
     EXPECT_EQ(cd.vvi[1][2], 256);
 
-    EXPECT_EQ(cd.vs.size(), 3);
+    EXPECT_EQ(cd.vs.size(), 3U);
     EXPECT_EQ(cd.vs[0], "hello");
     EXPECT_EQ(cd.vs[1], "hallo");
     EXPECT_EQ(cd.vs[2], "你好");
 
-    EXPECT_EQ(cd.vvs.size(), 2);
+    EXPECT_EQ(cd.vvs.size(), 2U);
     EXPECT_EQ(cd.vvs[0][0], "Python");
     EXPECT_EQ(cd.vvs[0][1], "Perl");
     EXPECT_EQ(cd.vvs[0][2], "Bash");
@@ -148,13 +148,13 @@ void childeq(const XTest&cd) {
     EXPECT_EQ(cd.vvs[1][1], "Golang");
     EXPECT_EQ(cd.vvs[1][2], "Rust");
 
-    EXPECT_EQ(cd.vst.size(), 2);
+    EXPECT_EQ(cd.vst.size(), 2U);
     EXPECT_EQ(cd.vst[0].bi, 1);
     EXPECT_EQ(cd.vst[0].bs, "2");
     EXPECT_EQ(cd.vst[1].bi, 3);
     EXPECT_EQ(cd.vst[1].bs, "4");
 
-    EXPECT_EQ(cd.vvst.size(), 2);
+    EXPECT_EQ(cd.vvst.size(), 2U);
     EXPECT_EQ(cd.vvst[0][0].bi, 5);
     EXPECT_EQ(cd.vvst[0][0].bs, "6");
     EXPECT_EQ(cd.vvst[0][1].bi, 7);
@@ -162,13 +162,13 @@ void childeq(const XTest&cd) {
     EXPECT_EQ(cd.vvst[1][0].bi, 9);
     EXPECT_EQ(cd.vvst[1][0].bs, "10");
 
-    EXPECT_EQ(cd.si.size(), 3);
+    EXPECT_EQ(cd.si.size(), 3U);
     EXPECT_TRUE(cd.si.find(1)!=cd.si.end());
     EXPECT_TRUE(cd.si.find(3)!=cd.si.end());
     EXPECT_TRUE(cd.si.find(5)!=cd.si.end());
 
     auto siter = cd.li.begin();
-    EXPECT_EQ(cd.li.size(), 3);
+    EXPECT_EQ(cd.li.size(), 3U);
     EXPECT_EQ(*siter, 2); ++siter;
     EXPECT_EQ(*siter, 4); ++siter;
     EXPECT_EQ(*siter, 6); ++siter;
@@ -224,11 +224,11 @@ void childeq(const XTest&cd) {
     EXPECT_EQ(cd.types.sh, 10);
     EXPECT_EQ(cd.types.ush, 24);
     EXPECT_EQ(cd.types.i, 10);
-    EXPECT_EQ(cd.types.ui, 24);
+    EXPECT_EQ(cd.types.ui, 24U);
     EXPECT_EQ(cd.types.l, 10);
-    EXPECT_EQ(cd.types.ul, 24);
+    EXPECT_EQ(cd.types.ul, 24U);
     EXPECT_EQ(cd.types.ll, 10);
-    EXPECT_EQ(cd.types.ull, 24);
+    EXPECT_EQ(cd.types.ull, 24U);
     EXPECT_FLOAT_EQ(cd.types.f, 2.718);
     EXPECT_DOUBLE_EQ(cd.types.d, 3.14);
     EXPECT_DOUBLE_EQ(cd.types.ld, 0.618);
