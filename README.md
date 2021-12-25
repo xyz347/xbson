@@ -4,6 +4,7 @@ xbson
 * 依赖于[xpack](https://github.com/xyz347/xpack)
 * 使用方法请参考[xpack](https://github.com/xyz347/xpack)
 * xbson自身只有头文件, 无需额外编译库文件，依赖于libbson，在thirdparty目录下。
+* 用于支持[mongoxclient](https://github.com/xyz347/mongoxclient)
 
 ------
 * [重要说明](#重要说明)

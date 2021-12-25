@@ -5,7 +5,7 @@
 * you may not use this file except in compliance with the License. 
 * You may obtain a copy of the License at
 *
-*	http://www.apache.org/licenses/LICENSE-2.0
+*    http://www.apache.org/licenses/LICENSE-2.0
 *
 * Unless required by applicable law or agreed to in writing, 
 * software distributed under the License is distributed on an "AS IS" BASIS, 
@@ -27,10 +27,36 @@
 namespace xpack {
 
 
-class BsonDecoder:public XDecoder<BsonDecoder> {
-public:
+class BsonDecoder:public XDecoder<BsonDecoder>, private noncopyable {
     friend class XDecoder<BsonDecoder>;
+
+    class MemberIterator {
+        friend class BsonDecoder;
+    public:
+        MemberIterator(size_t iter, BsonDecoder* parent):_iter(iter),_parent(parent){}
+        bool operator != (const MemberIterator &that) const {
+            return _iter != that._iter;
+        }
+        MemberIterator& operator ++ () {
+            ++_iter;
+            return *this;
+        }
+        const char* Key() const {
+            if (NULL != _parent) {
+                return _parent->get_iter_key(_iter);
+            }
+            return "";
+        }
+        BsonDecoder& Val() const {
+            return _parent->member(*this, *_parent->alloc());
+        }
+    private:
+        size_t _iter;
+        BsonDecoder* _parent;
+    };
+public:
     using xdoc_type::decode;
+    typedef MemberIterator Iterator;
 
     BsonDecoder(const uint8_t*data, size_t length, bool copy):xdoc_type(0, "") {
         parse(data, length, copy);
@@ -72,7 +98,6 @@ public:
             }                                                     \
             return false;                                         \
         }
-
     bool decode(const char *key, std::string &val, const Extend *ext) {
         XPACK_BSON_DECODE_CHECK()
 
@@ -122,45 +147,21 @@ public:
     size_t Size() const {
             return _childs.size();
     }
-    BsonDecoder At(size_t index) {
-        if (index < _childs.size()) {
-            return BsonDecoder(&_childs[index], this, index);
-        } else {
-            throw std::runtime_error("Out of index");
-        }
-        return BsonDecoder(NULL, NULL, "");
+    BsonDecoder& operator[](size_t index) {
+        BsonDecoder *d = alloc();
+        member(index, *d);
+        return *d;
     }
-    BsonDecoder* Find(const char*key, BsonDecoder*tmp) {
-        node_index::iterator iter;
-        if (_childs_index.end() != (iter=_childs_index.find(key))) {
-            tmp->_key = key;
-            tmp->_parent = this;
-            tmp->_node = &_childs[iter->second];
-            tmp->init();
-            return tmp;
-        } else {
-            return NULL;
-        }
+    BsonDecoder& operator[](const char* key) {
+        BsonDecoder *d = alloc();
+        member(key, *d);
+        return *d;
     }
-    BsonDecoder Begin() {
-        if (_childs.size() > 0) {
-            return BsonDecoder(&_childs[0], this, bson_iter_key(&_childs[0]), 0);
-        } else {
-            return BsonDecoder(NULL, this, "");
-        }
+    Iterator Begin() {
+        return Iterator(0, this);
     }
-    BsonDecoder Next() {
-        if (NULL == _parent) {
-            throw std::runtime_error("parent null");
-        } else {
-            size_t iter = _iter+1;
-            if (iter < _parent->_childs.size()) {
-                const bson_iter_t *nnode = &_parent->_childs[iter];
-                return BsonDecoder(nnode, _parent, bson_iter_key(nnode), iter);
-            } else {
-                return BsonDecoder(NULL, _parent, "");
-            }
-        }
+    Iterator End() {
+        return Iterator(_childs.size(), this);
     }
     operator bool() const {
         return NULL != _node;
@@ -189,6 +190,9 @@ private:
 
     // get object or array info
     void init(bool top = false) {
+         _childs.clear();
+         _childs_index.clear();
+
         bson_iter_t sub;
         if (NULL == _node) {
             return;
@@ -215,14 +219,6 @@ private:
     BsonDecoder():xdoc_type(0, ""),_node(NULL) {
         _data = NULL;
     }
-    BsonDecoder(const bson_iter_t* val, const BsonDecoder*parent, const char*key, size_t iter=0):xdoc_type(parent, key),_node(val),_iter(iter) {
-        _data = NULL;
-        init();
-    }
-    BsonDecoder(const bson_iter_t* val, const BsonDecoder*parent, size_t index):xdoc_type(parent, index),_node(val) {
-        _data = NULL;
-        init();
-    }
 
     const bson_iter_t* get_val(const char *key) {
         if (NULL == key) {
@@ -237,6 +233,37 @@ private:
         } else {
             return NULL;
         }
+    }
+
+    BsonDecoder& member(size_t index, BsonDecoder&d) {
+        if (index < _childs.size()) {
+            d.init_base(this, index);
+            d._node = &_childs[index];
+            d.init();
+        } else {
+            decode_exception("Out of index", NULL);
+        }
+        return d;
+    }
+    BsonDecoder& member(const char*key, BsonDecoder&d) {
+        node_index::iterator iter;
+        if (_childs_index.end() != (iter=_childs_index.find(key))) {
+            d.init_base(this, key);
+            d._node = &_childs[iter->second];
+            d.init();
+        }
+        return d;
+    }
+    BsonDecoder& member(const Iterator &iter, BsonDecoder&d) {
+        const bson_iter_t* node = &_childs[iter._iter];
+        d.init_base(iter._parent, bson_iter_key(node));
+        d._node = node;
+        d.init();
+        return d;
+    }
+
+    const char *get_iter_key(size_t index) const {
+        return bson_iter_key(&_childs[index]);
     }
 
     // only for parse

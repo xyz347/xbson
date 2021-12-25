@@ -5,7 +5,7 @@
 * you may not use this file except in compliance with the License. 
 * You may obtain a copy of the License at
 *
-*	http://www.apache.org/licenses/LICENSE-2.0
+*    http://www.apache.org/licenses/LICENSE-2.0
 *
 * Unless required by applicable law or agreed to in writing, 
 * software distributed under the License is distributed on an "AS IS" BASIS, 
@@ -25,7 +25,7 @@
 
 namespace xpack {
 
-class BsonEncoder:public XEncoder<BsonEncoder> {
+class BsonEncoder:public XEncoder<BsonEncoder>, private noncopyable {
     struct Node {
         const char *key;
         Node    *parent;
@@ -123,12 +123,13 @@ public:
             cur = cur->parent; // do not pop and delete
         }
     }
-
-    /*BsonEncoder& convert(const char*key, const BsonEncoder& data){
-        bson_append_document(_bson, key, strlen(key), data._bson);
-        return *this;
-    }*/
-
+    bool writeNull(const char*key, const Extend *ext) {
+        if (Extend::OmitEmpty(ext)) {
+            return false;
+        }
+        bson_append_null(&cur->data, key, strlen(key));
+        return true;
+    }
     bool encode(const char*key, const char* val, const Extend *ext) {
         if (NULL==val && Extend::OmitEmpty(ext)){
             return false;
