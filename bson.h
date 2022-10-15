@@ -27,16 +27,14 @@ namespace xpack {
 class bson {
 public:
     template <class T>
-    // if copy is false, decode will parse bson in data. data's life time must >= call of decode
-    static void decode(const std::string &data, T &val, bool copy=false) {
-        BsonDecoder doc(data, copy);
+    static void decode(const std::string &data, T &val) {
+        BsonDecoder doc(data, false);
         doc.decode(NULL, val, NULL);
     }
 
     template <class T>
-    // if copy is false, decode will parse bson in data. data's life time must >= call of decode
-    static void decode(const uint8_t* data, size_t len, T &val, bool copy=false) {
-        BsonDecoder doc(data, len, copy);
+    static void decode(const uint8_t* data, size_t len, T &val) {
+        BsonDecoder doc(data, len, false);
         doc.decode(NULL, val, NULL);
     }
 

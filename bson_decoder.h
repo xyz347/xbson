@@ -58,9 +58,11 @@ public:
     using xdoc_type::decode;
     typedef MemberIterator Iterator;
 
+    // if copy is false, BsonDecoder will parse bson in data. data's life time must >= BsonDecoder
     BsonDecoder(const uint8_t*data, size_t length, bool copy):xdoc_type(0, "") {
         parse(data, length, copy);
     }
+    // if copy is false, BsonDecoder will parse bson in data. data's life time must >= BsonDecoder
     BsonDecoder(const std::string&data, bool copy):xdoc_type(0, "") {
         parse((const uint8_t*)data.data(), data.length(), copy);
     }
@@ -149,12 +151,12 @@ public:
     }
     BsonDecoder& operator[](size_t index) {
         BsonDecoder *d = alloc();
-        member(index, *d);
+        member(index, *d, NULL);
         return *d;
     }
     BsonDecoder& operator[](const char* key) {
         BsonDecoder *d = alloc();
-        member(key, *d);
+        member(key, *d, NULL);
         return *d;
     }
     Iterator Begin() {
@@ -235,7 +237,8 @@ private:
         }
     }
 
-    BsonDecoder& member(size_t index, BsonDecoder&d) {
+    BsonDecoder& member(size_t index, BsonDecoder&d, const Extend *ext) {
+        (void)ext;
         if (index < _childs.size()) {
             d.init_base(this, index);
             d._node = &_childs[index];
@@ -245,7 +248,8 @@ private:
         }
         return d;
     }
-    BsonDecoder& member(const char*key, BsonDecoder&d) {
+    BsonDecoder& member(const char*key, BsonDecoder&d, const Extend *ext) {
+        (void)ext;
         node_index::iterator iter;
         if (_childs_index.end() != (iter=_childs_index.find(key))) {
             d.init_base(this, key);

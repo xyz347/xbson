@@ -97,11 +97,13 @@ class BsonBuilder {
     struct Encoder {
         const std::vector<const Item*>* items;
         BsonEncoder en;
+
         size_t idx;  // items index;
         size_t vidx; // variable index;
+
         std::vector<std::string> vkeys; // store variable key
-        Item tmpIt;  // key:value when key is a variable
-        Item *pIt;
+        Item tmpIt;  // key:value when key is a variable, copy item to here
+        Item *pIt;   // point to tmpIt
 
         std::vector<size_t> arrayIndex;
         std::vector<const char*> objKeys;   // store object key. use in object end
@@ -131,8 +133,6 @@ public:
                 if (items[i]->kvar || items[i]->tk.type==Variable) {
                     return;
                 }
-                //const Item *it = items[i];
-                //std::cout<<"type:"<<it->tk.type<<"("<<it->kvar<<")"<<std::endl;//' '<<"key:"<<items[i]->key<<std::endl;
             }
 
             // no variable. pre build it
@@ -195,20 +195,22 @@ private: // encoder
     BsonBuilder(const BsonBuilder&bd):dup(NULL) {
         en = new Encoder(bd.items);
     }
+
+#ifdef X_PACK_SUPPORT_CXX0X // support c++11 or later
+    // implement iencode()/iencode(T)/iencode(T, Args...) to expand template arguments
     void iencode() {
     }
-
     template <typename T>
     void iencode(const T &val) {
         encode(val);
         ++en->vidx;
     }
-
     template <typename T, typename... Args>
     void iencode(const T& first, Args... args) {
         iencode(first);
         iencode(args...);
     }
+#endif
 
     template <typename T>
     BsonBuilder& encode(const T &val) {
@@ -228,7 +230,6 @@ private: // encoder
             add(en->pIt, val);
             en->pIt = NULL;
             ++en->idx;
-            //std::cout<<"?:? of val"<<std::endl;
             return *this;
         }
 
@@ -243,10 +244,8 @@ private: // encoder
                 en->pIt = NULL;
                 ++en->idx;
             }
-            //std::cout<<"?:? of key:"<<en->pIt->key<<std::endl;
         } else { // val is variable
             add(it, val);
-            //std::cout<<"key:? of val:"<<val<<std::endl;
             ++en->idx;
         }
         return *this;
@@ -294,7 +293,7 @@ private: // encoder
         }
     }
 
-    // encode finish
+    // encode the last none variable item
     void end(std::string *err) {
         for (; en->idx<en->items->size(); ++en->idx) {
             const Item *it = en->items->at(en->idx);
