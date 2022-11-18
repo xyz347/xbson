@@ -1,8 +1,15 @@
 #include <iostream>
 
 #include "xbson/bson.h"
+#include "xpack/json.h"
 
 using namespace std;
+
+struct test {
+    string a;
+    xpack::BsonDate b;
+    XPACK(O(a, b));
+};
 
 int main(int argc, char *argv[]) {
     // use static so parse only once
@@ -16,4 +23,15 @@ int main(int argc, char *argv[]) {
     cout<<"json2:"<<bd.EncodeAsJson("uid", 123.0, "LiLei/HanMeimei/Jim")<<endl;
 
     cout<<"json3:"<<bd.EncodeAsJson("Lang", "C++", "")<<endl;
+
+    test t;
+    t.a = "good";
+    t.b = 1668768118000;
+    string s = xpack::json::encode(t);
+    cout<<s<<endl;
+
+    xpack::BsonEncoder en;
+    en.encode(NULL, t, NULL);
+    string js = en.Json();
+    cout<<"bson:"<<js<<endl;
 }

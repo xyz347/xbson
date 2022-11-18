@@ -22,6 +22,7 @@
 
 #include "xpack/util.h"
 #include "xpack/xencoder.h"
+#include "bson_type.h"
 
 namespace xpack {
 
@@ -155,6 +156,12 @@ public:
     bool encode(const char*key, const bool &val, const Extend *ext) {
         (void)ext;
         bson_append_bool(&cur->data, key, strlen(key), val);
+        return true;
+    }
+
+    bool encode(const char*key, const BsonDate &val, const Extend *ext) {
+        (void)ext;
+        bson_append_date_time(&cur->data, key, strlen(key), val);
         return true;
     }
 

@@ -23,6 +23,7 @@
 #include "string.h"
 #include "xpack/util.h"
 #include "xpack/xdecoder.h"
+#include "bson_type.h"
 
 namespace xpack {
 
@@ -113,6 +114,11 @@ public:
     bool decode(const char *key, bool &val, const Extend *ext) {
         XPACK_BSON_DECODE_CHECK()
         val = bson_iter_as_bool(it);
+        return true;
+    }
+    bool decode(const char *key, BsonDate &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        val = bson_iter_date_time(it);
         return true;
     }
 
