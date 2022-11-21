@@ -17,7 +17,10 @@
 #ifndef __X_PACK_BSON_TYPE_H
 #define __X_PACK_BSON_TYPE_H
 
+#include <map>
+#include <string>
 #include <stdint.h>
+#include "xpack/extend.h"
 
 namespace xpack {
 
@@ -29,6 +32,25 @@ public:
     }
     int64_t ts;
 };
+
+template<>
+struct is_xpack_xtype<BsonDate> {static bool const value = true;};
+
+template<class OBJ>
+inline bool xpack_xtype_decode(OBJ &obj, const char*key, BsonDate &val, const Extend *ext) {
+    OBJ *o = obj.find(key, ext);
+    if (NULL != o) {
+        return o->decode("$date", val.ts, NULL);
+    } else {
+        return false;
+    }
+}
+template<class OBJ>
+inline bool xpack_xtype_encode(OBJ &obj, const char*key, const BsonDate &val, const Extend *ext) {
+    std::map<std::string, int64_t> m;
+    m["$date"] = val.ts;
+    return obj.encode(key, m, ext);
+}
 
 }
 
