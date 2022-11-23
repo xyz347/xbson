@@ -7,8 +7,11 @@ using namespace std;
 
 struct test {
     string a;
-    xpack::BsonDate b;
-    XPACK(O(a, b));
+    bson_date_time_t dt1;
+    bson_date_time_t dt2;
+    bson_date_time_t dt3;
+    bson_oid_t o;
+    XPACK(O(a, dt1, dt2, dt3, o));
 };
 
 int main(int argc, char *argv[]) {
@@ -26,12 +29,47 @@ int main(int argc, char *argv[]) {
 
     test t;
     t.a = "good";
-    t.b = 1668768118000;
+    t.dt1 = 1669096917012;
+    t.dt2 = 1669096917000;
+    t.dt3 = -1669096917456;
+    bson_oid_init_from_string(&t.o, "5d505646cf6d4fe581014ab2");
     string s = xpack::json::encode(t);
     cout<<s<<endl;
+
+    test t1;
+    xpack::json::decode(s, t1);
+    cout<<xpack::json::encode(t1)<<endl;
 
     xpack::BsonEncoder en;
     en.encode(NULL, t, NULL);
     string js = en.Json();
     cout<<"bson:"<<js<<endl;
+
+    test t2;
+    xpack::json::decode(js, t2);
+    cout<<xpack::json::encode(t2)<<endl;
+
+    bson_date_time_t dt;
+    bool pok = dt.parse_rfc3339("2022-11-22T06:01:57.012Z");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    pok = dt.parse_rfc3339("2022-11-22T06:01:57Z");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    pok = dt.parse_rfc3339("2022-11-22T06:01:57Z-07:00");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    pok = dt.parse_rfc3339("2022-11-22T06:01:57Z+07:00");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    pok = dt.parse_rfc3339("2022-11-22T06:01:57Z07:00");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    pok = dt.parse_rfc3339("2022-11-22T06:01:57.067Z07:00");
+    cout<<pok<<','<<dt.ts<<endl;
+
+    test tdt1;
+    string dts = "{\"dt1\":{\"$date\":\"2022-11-21T22:01:57.012Z\"}}";
+    xpack::json::decode(dts, tdt1);
+    cout<<tdt1.dt1.ts<<endl;
 }

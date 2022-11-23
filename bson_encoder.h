@@ -159,12 +159,6 @@ public:
         return true;
     }
 
-    bool encode(const char*key, const BsonDate &val, const Extend *ext) {
-        (void)ext;
-        bson_append_date_time(&cur->data, key, strlen(key), val);
-        return true;
-    }
-
 
     #define X_PACK_BSON_ENCODE_NUMBER(vtype, ftype, ctype)          \
     bool encode(const char*key, const vtype&val, const Extend*ext) {\
@@ -192,6 +186,35 @@ public:
     X_PACK_BSON_ENCODE_NUMBER(float, double, double)
     X_PACK_BSON_ENCODE_NUMBER(double, double, double)
     X_PACK_BSON_ENCODE_NUMBER(long double, double, double)
+
+    // bson types
+    bool encode(const char*key, const bson_oid_t &val, const Extend *ext) {
+        (void)ext;
+        bson_append_oid(&cur->data, key, strlen(key), &val);
+        return true;
+    }
+    bool encode(const char*key, const bson_date_time_t &val, const Extend *ext) {
+        (void)ext;
+        bson_append_date_time(&cur->data, key, strlen(key), val.ts);
+        return true;
+    }
+    bool encode(const char *key, const bson_timestamp_t &val, const Extend *ext) {
+        (void)ext;
+        bson_append_timestamp(&cur->data, key, strlen(key), val.timestamp, val.increment);
+        return true;
+    }
+    bool encode(const char *key, const bson_decimal128_t &val, const Extend *ext) {
+        (void)ext;
+        return bson_append_decimal128(&cur->data, key, strlen(key), &val);
+    }
+    bool encode(const char *key, const bson_regex_t &val, const Extend *ext) {
+        (void)ext;
+        return bson_append_regex(&cur->data, key, strlen(key), val.pattern.c_str(), val.options.c_str());
+    }
+    bool encode(const char *key, const bson_binary_t &val, const Extend *ext) {
+        (void)ext;
+        return bson_append_binary(&cur->data, key, strlen(key), val.subType, (const uint8_t*)val.data.data(), val.data.length());
+    }
 
 private:
     std::vector<std::string> indexStr;
