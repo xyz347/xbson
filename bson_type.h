@@ -19,6 +19,7 @@
 
 #include <map>
 #include <string>
+#include <sstream>
 #include <ctime>
 #include <time.h>
 #include <stdint.h>
@@ -44,10 +45,6 @@ struct bson_timestamp_t {
     uint32_t increment;
     bson_timestamp_t(const uint32_t&t=0, const uint32_t&i=0):timestamp(t),increment(i){}
     XPACK(A(timestamp, "t", increment, "i"));
-};
-struct bson_binary_t {
-    std::string data;
-    bson_subtype_t subType;
 };
 struct bson_regex_t {
     std::string pattern;
@@ -85,10 +82,6 @@ struct bson_date_time_t {
                 end += pos+1;
             }
             if (*end != 'Z') {
-                return false;
-            }
-            ++end;
-            if (*end != '\0') {
                 pos = 0;
                 int hour = std::stoi(end, &pos);
                 if (pos == 0 || pos > 3) {
@@ -104,13 +97,97 @@ struct bson_date_time_t {
                 } else {
                     offset = -(-hour*3600 + min*60);
                 }
+            } else {
+                ++end;
+                if (*end != '\0') {
+                    return false;
+                }
             }
         } catch(...) {
             return false;
         }
 
         time_t tmp = mktime(&tm);
-        ts = tmp*1000 + msec + offset;
+        ts = tmp*1000 + msec - offset;
+        return true;
+    }
+};
+struct bson_binary_t {
+    std::string data;        // std::string is more general, so don't use std::basic_string<uint8_t>
+    bson_subtype_t subType;
+
+    inline static const char *b64() {
+        return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    }
+
+    // b64_ntop and b64_pton maybe should move to a public place
+    static void b64_ntop(const uint8_t *bin, size_t size, std::string&out) {
+        const char *b = b64();
+
+        out.reserve((size+2)/3*4);
+        size_t n = size/3*3;
+        size_t i;
+        for (i=0; i<n; i+=3) {
+            out.push_back(b[bin[i]>>2]);
+            out.push_back(b[((bin[i]&0x3)<<4) | (bin[i+1]>>4)]);
+            out.push_back(b[((bin[i+1]&0xf)<<2) | (bin[i+2]>>6)]);
+            out.push_back(b[bin[i+2]&0x3f]);
+        }
+        size_t left = size%3;
+        if (left == 1) {
+            out.push_back(b[bin[i]>>2]);
+            out.push_back(b[(bin[i]&0x3)<<4]);
+            out.push_back('=');
+            out.push_back('=');
+        } else if (left == 2) {
+            out.push_back(b[bin[i]>>2]);
+            out.push_back(b[((bin[i]&0x3)<<4) | (bin[i+1]>>4)]);
+            out.push_back(b[(bin[i+1]&0xf)<<2]);
+            out.push_back('=');
+        }
+    }
+    static bool b64_pton(const std::string&in, std::string&out) {
+        static uint8_t bmap[256] = {0};
+        if (bmap[255] == 0) { // init bmap, thread safe
+            for (size_t i=0; i<255; i++) bmap[i] = 0xff;
+            const char *p = b64();
+            for (uint8_t i=0; p[i]!='\0'; ++i) bmap[p[i]] = i;
+            bmap[255] = 0xff;
+        }
+
+        size_t size = in.length();
+        if (size==0 || 0 != (size&0x3)) {
+            return false;
+        }
+        out.reserve((size+3)/4*3);
+
+        const char *data = in.data();
+        for (size_t i=0; i<size; i+=4) {
+            uint8_t i1 = bmap[(uint8_t)data[i]];
+            uint8_t i2 = bmap[(uint8_t)data[i+1]];
+            uint8_t i3 = bmap[(uint8_t)data[i+2]];
+            uint8_t i4 = bmap[(uint8_t)data[i+3]];
+            if (i1!=0xff && i2!=0xff) {
+                out.push_back((char)((i1<<2) | (i2>>4)));
+            } else {
+                return false;
+            }
+
+            if (i3 != 0xff) {
+                out.push_back((char)((i2<<4) | (i3>>2)));
+            } else if (data[i+2]=='=' && data[i+3]=='=' && i+4==size) {
+                return true;
+            } else {
+                return false;
+            }
+            if (i4 != 0xff) {
+                out.push_back((char)((i3<<6) | i4));
+            } else if (data[i+3]=='=' && i+4==size) {
+                return true;
+            } else {
+                return false;
+            }
+        }
         return true;
     }
 };
@@ -268,10 +345,62 @@ template<>
 struct is_xpack_json_type<bson_binary_t> {static bool const value = true;};
 template<class OBJ>
 bool xpack_json_type_decode(OBJ &obj, const char*key, bson_binary_t &val, const Extend *ext) {
+    OBJ *o = obj.find(key, ext);
+    if (o == NULL || NULL == (o = o->find("$binary", NULL))) {
+        return false;
+    }
+
+    bool ret;
+    try {
+        std::string subType;
+        ret = o->decode("subType", subType, NULL);
+        if (ret && (subType.length()==1 || subType.length()==2)) {
+            int st = 0;
+            for (size_t i=0; i<subType.length(); ++i) {
+                int tmp = (int)(subType[i]);
+                if (tmp>='0' && tmp<='9') {
+                    tmp -= '0';
+                } else if (tmp>='a' && tmp<='f') {
+                    tmp = 10 + tmp-'a';
+                } else if (tmp>='A' && tmp<='F') {
+                    tmp = 10 + tmp-'A';
+                } else {
+                    return false;
+                }
+                st = (st<<4) + tmp;
+            }
+            val.subType = (bson_subtype_t)st;
+        } else {
+            return false;
+        }
+
+        std::string data;
+        ret = o->decode("base64", data, NULL);
+        if (ret) {
+            ret = bson_binary_t::b64_pton(data, val.data);
+        }
+        return ret;
+    } catch (...){
+        return false;
+    }
+
     return true;
 }
 template<class OBJ>
 bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_binary_t &val, const Extend *ext) {
+    obj.ObjectBegin(key, ext);
+    obj.ObjectBegin("$binary", NULL);
+
+    std::string b64;
+    bson_binary_t::b64_ntop((const uint8_t*)val.data.data(), val.data.length(), b64);
+    obj.encode("base64", b64, NULL);
+
+    std::stringstream ss;
+    ss<<std::hex<<val.subType;
+    obj.encode("subType", ss.str(), NULL);
+
+    obj.ObjectEnd("$binary", NULL);
+    obj.ObjectEnd(key, ext);
     return true;
 }
 
