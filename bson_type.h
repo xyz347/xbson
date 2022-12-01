@@ -47,12 +47,12 @@ struct bson_timestamp_t {
     XPACK(A(timestamp, "t", increment, "i"));
 };
 struct bson_regex_t {
-    std::string pattern;
+    std::string pattern; // libbson not escape string, this should be a bug
     std::string options;
     // ver==1 {"$regularExpression": {pattern: <string>, "options": <string>"}}
     // ver==2 {"$regex: <string>, $options: <string>"}
     int ver; // ver==1 
-    bson_regex_t():ver(1){}
+    bson_regex_t():ver(2){}
 };
 struct bson_date_time_t {
     int64_t ts; // milliseconds
@@ -108,7 +108,7 @@ struct bson_date_time_t {
         }
 
         time_t tmp = mktime(&tm);
-        ts = tmp*1000 + msec - offset;
+        ts = tmp*1000 + msec - offset - timezone*1000;
         return true;
     }
 };
@@ -151,7 +151,7 @@ struct bson_binary_t {
         if (bmap[255] == 0) { // init bmap, thread safe
             for (size_t i=0; i<255; i++) bmap[i] = 0xff;
             const char *p = b64();
-            for (uint8_t i=0; p[i]!='\0'; ++i) bmap[p[i]] = i;
+            for (uint8_t i=0; p[i]!='\0'; ++i) bmap[(int)p[i]] = i;
             bmap[255] = 0xff;
         }
 
@@ -198,10 +198,11 @@ namespace xpack {
 // Relaxed Extended JSON Format Only
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ObjectId ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// {"$oid":"xxxxx"}
 template<>
-struct is_xpack_json_type<bson_oid_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_oid_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_oid_t &val, const Extend *ext) {
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_oid_t &val, const Extend *ext) {
     bool ret;
     OBJ *o = obj.find(key, ext);
     if (o != NULL) {
@@ -216,7 +217,7 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_oid_t &val, const Ext
     return ret;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_oid_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_oid_t &val, const Extend *ext) {
     char buf[25];
     bson_oid_to_string(&val, buf);
     obj.ObjectBegin(key, ext);
@@ -226,10 +227,13 @@ bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_oid_t &val, con
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ date time ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
+// {"$date": 12345} 
+// {"$date":"2006-01-02T15:04:05Z"}
+// {"$date":{"$numberLong":"123456"}}
 template<>
-struct is_xpack_json_type<bson_date_time_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_date_time_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_date_time_t &val, const Extend *ext) {
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_date_time_t &val, const Extend *ext) {
     OBJ *o = obj.find(key, ext);
     if (o == NULL || NULL == (o = o->find("$date", NULL))) {
         return false;
@@ -261,7 +265,7 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_date_time_t &val, con
     return false;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_date_time_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_date_time_t &val, const Extend *ext) {
     obj.ObjectBegin(key, ext);
     if (val.ts >= 0) {
         char buf[32];
@@ -291,32 +295,34 @@ bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_date_time_t &va
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ timestamp ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// {"$timestamp":{"t":xxx, "i":xxx}}
 template<>
-struct is_xpack_json_type<bson_timestamp_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_timestamp_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_timestamp_t &val, const Extend *ext) {
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_timestamp_t &val, const Extend *ext) {
     bool ret;
     OBJ *o = obj.find(key, ext);
     if (o != NULL) {
-        ret = o->decode("$timestamp", val, NULL);
+        ret = o->decode_xpack("$timestamp", val, NULL);
     } else {
         ret = false;
     }
     return ret;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_timestamp_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_timestamp_t &val, const Extend *ext) {
     obj.ObjectBegin(key, ext);
-    obj.encode("$timestamp", val, NULL);
+    obj.encode_xpack("$timestamp", val, NULL);
     obj.ObjectEnd(key, ext);
     return true;
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ numberDecimal ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// {"$numberDecimal":"123.4"}
 template<>
-struct is_xpack_json_type<bson_decimal128_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_decimal128_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_decimal128_t &val, const Extend *ext) {
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_decimal128_t &val, const Extend *ext) {
     bool ret;
     OBJ *o = obj.find(key, ext);
     if (o != NULL) {
@@ -331,7 +337,7 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_decimal128_t &val, co
     return ret;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_decimal128_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_decimal128_t &val, const Extend *ext) {
     char buf[BSON_DECIMAL128_STRING];
     bson_decimal128_to_string(&val, buf);
     obj.ObjectBegin(key, ext);
@@ -341,20 +347,37 @@ bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_decimal128_t &v
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ binary ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
+// {"$binary":{"base64":"aGVsbG8=","subType":"80"}}
+// {"$binary":"aGVsbG8=", "$type":"80"}
 template<>
-struct is_xpack_json_type<bson_binary_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_binary_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_binary_t &val, const Extend *ext) {
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_binary_t &val, const Extend *ext) {
     OBJ *o = obj.find(key, ext);
-    if (o == NULL || NULL == (o = o->find("$binary", NULL))) {
+    if (o == NULL) {
         return false;
     }
 
-    bool ret;
     try {
         std::string subType;
-        ret = o->decode("subType", subType, NULL);
-        if (ret && (subType.length()==1 || subType.length()==2)) {
+        std::string data;
+        bool ret1;
+        bool ret2;
+
+        OBJ *st = o->find("$type", NULL);
+        if (NULL == st) {
+            o = o->find("$binary", NULL);
+            if (NULL == o) {
+                return false;
+            }
+            ret1 = o->decode("subType", subType, NULL);
+            ret2 = o->decode("base64", data, NULL);
+        } else {
+            ret1 = st->decode(NULL, subType, NULL);
+            ret2 = o->decode("$binary", data, NULL);
+        }
+
+        if (ret1 && (subType.length()==1 || subType.length()==2)) {
             int st = 0;
             for (size_t i=0; i<subType.length(); ++i) {
                 int tmp = (int)(subType[i]);
@@ -374,12 +397,10 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_binary_t &val, const 
             return false;
         }
 
-        std::string data;
-        ret = o->decode("base64", data, NULL);
-        if (ret) {
-            ret = bson_binary_t::b64_pton(data, val.data);
+        if (ret2) {
+            ret2 = bson_binary_t::b64_pton(data, val.data);
         }
-        return ret;
+        return ret2;
     } catch (...){
         return false;
     }
@@ -387,7 +408,7 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_binary_t &val, const 
     return true;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_binary_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_binary_t &val, const Extend *ext) {
     obj.ObjectBegin(key, ext);
     obj.ObjectBegin("$binary", NULL);
 
@@ -406,10 +427,9 @@ bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_binary_t &val, 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ regex ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ //
 template<>
-struct is_xpack_json_type<bson_regex_t> {static bool const value = true;};
+struct is_xpack_xtype<bson_regex_t> {static bool const value = true;};
 template<class OBJ>
-bool xpack_json_type_decode(OBJ &obj, const char*key, bson_regex_t &val, const Extend *ext) {
-    bool ret;
+bool xpack_xtype_decode(OBJ &obj, const char*key, bson_regex_t &val, const Extend *ext) {
     OBJ *o = obj.find(key, ext);
     if (o == NULL) {
         return false;
@@ -429,7 +449,7 @@ bool xpack_json_type_decode(OBJ &obj, const char*key, bson_regex_t &val, const E
     return true;
 }
 template<class OBJ>
-bool xpack_json_type_encode(OBJ &obj, const char*key, const bson_regex_t &val, const Extend *ext) {
+bool xpack_xtype_encode(OBJ &obj, const char*key, const bson_regex_t &val, const Extend *ext) {
     obj.ObjectBegin(key, ext);
     if (val.ver == 1) {
         obj.ObjectBegin("$regularExpression", NULL);
