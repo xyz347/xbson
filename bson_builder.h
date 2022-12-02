@@ -318,6 +318,7 @@ private: // encoder
 
     template <typename T>
     const char *dumpStr(const T&val) {
+        (void)val;
         std::string err = "variable "+Util::itoa(en->vidx)+" is a key, must be std::string or const char*";
         throw std::runtime_error(err);
         return "";

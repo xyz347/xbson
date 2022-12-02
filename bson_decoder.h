@@ -23,6 +23,7 @@
 #include "string.h"
 #include "xpack/util.h"
 #include "xpack/xdecoder.h"
+#include "bson_type.h"
 
 namespace xpack {
 
@@ -168,6 +169,55 @@ public:
     operator bool() const {
         return NULL != _node;
     }
+
+    // bson type
+    bool decode(const char *key, bson_oid_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        const bson_oid_t *t = bson_iter_oid(it);
+        if (t != NULL) {
+            bson_oid_init_from_data(&val, t->bytes);
+            return true;
+        } else {
+            return false;
+        }
+    }
+    bool decode(const char *key, bson_date_time_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        val.ts = bson_iter_date_time(it);
+        return true;
+    }
+    bool decode(const char *key, bson_timestamp_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        bson_iter_timestamp(it, &val.timestamp, &val.increment);
+        return true;
+    }
+    bool decode(const char *key, bson_decimal128_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        return bson_iter_decimal128(it, &val);
+    }
+    bool decode(const char *key, bson_regex_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        const char *options = NULL;
+        const char *regex = bson_iter_regex(it, &options);
+        if (NULL != regex) {
+            val.pattern = regex;
+        }
+        if (NULL != options) {
+            val.options = options;
+        }
+        return true;
+    }
+    bool decode(const char *key, bson_binary_t &val, const Extend *ext) {
+        XPACK_BSON_DECODE_CHECK()
+        uint32_t len = 0;
+        const uint8_t *data = NULL;
+        bson_iter_binary(it, &val.subType, &len, &data);
+        if (data != NULL && len > 0) {
+            val.data = std::string((const char*)data, size_t(len));
+        }
+        return true;
+    }
+
 
 private:
     typedef std::map<const char*, size_t, cmp_str> node_index; // index of _childs

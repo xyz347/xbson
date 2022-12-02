@@ -8,6 +8,7 @@
 # 目录
 - [encoder](#encoder)
 - [decoder](#decoder)
+- [bson types](#bsontypes)
 - [builder](#builder)
 - [重要说明](#重要说明)
 
@@ -44,6 +45,16 @@ xpack::bson::decode(data, t);
 // xpack::bson::decode 还有另一个参数方式：static void decode(const uint8_t* data, size_t len, T &val)
 ```
 关于XPACK的使用，请参考[xpack](https://github.com/xyz347/xpack)
+
+## bsontypes
+- date time: bson_date_time_t
+- timestamp: bson_timestamp_t
+- binary: bson_binary_t
+- regex: bson_regex_t
+- oid: bson_oid_t
+- decimal128: bson_decimal128_t
+
+前4种是xbson额外定义的，后面两种是定义在libbson内的，为了统一，前4种也是定义在全局命名空间。
 
 ## builder
 **需要C++11或以上版本支持**。用json的格式来构造bson数据。查询接口中的query，一般只需要指定很少几个字段，这个场景用结构体表达不是很方便。用builder就会简单很多。基本用法是：
